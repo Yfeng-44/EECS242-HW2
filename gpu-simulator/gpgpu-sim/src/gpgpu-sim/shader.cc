@@ -504,6 +504,9 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
   m_last_inst_gpu_sim_cycle = 0;
   m_last_inst_gpu_tot_sim_cycle = 0;
 
+  this->N_blk = config->m_L1D_config.get_max_num_lines();
+  // std::cout << "N_blk" << this->N_blk << std::endl;
+
   // Jin: for concurrent kernels on a SM
   m_occupied_n_threads = 0;
   m_occupied_shmem = 0;
@@ -1177,6 +1180,11 @@ void scheduler_unit::order_by_priority(
   assert(num_warps_to_add <= input_list.size());
   result_list.clear();
   typename std::vector<T> temp = input_list;
+
+  for (auto i : this->m_shader->l1d_access_bit_map) {
+    std::cout << i;
+  }
+  std::cout << "end" << std::endl;
   // TODO: add ORDERING_CACHE_AWARE_THEN_GREEDY_THEN_PRIORITY_FUNC to if-else
   if (ORDERING_GREEDY_THEN_PRIORITY_FUNC == ordering) {
     T greedy_value = *last_issued_from_input;
@@ -2027,6 +2035,13 @@ void ldst_unit::L1_latency_queue_cycle() {
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
+      if (this->m_core->l1d_access_bit_map.size() < this->m_core->N_blk)  {
+        this->m_core->N_blk += 1;
+        this->m_core->l1d_access_bit_map.push_back(mf_next->get_addr());
+      } else { // l1d_access_bit_map.size() >= N_blk
+        this->m_core->l1d_access_bit_map.pop_front();
+        this->m_core->l1d_access_bit_map.push_back(mf_next->get_addr());
+      }
 
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
