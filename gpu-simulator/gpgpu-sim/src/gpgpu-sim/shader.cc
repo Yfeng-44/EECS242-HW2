@@ -189,18 +189,20 @@ void shader_core_ctx::create_schedulers() {
   const concrete_scheduler scheduler =
       sched_config.find("lrr") != std::string::npos
           ? CONCRETE_SCHEDULER_LRR
-          : sched_config.find("two_level_active") != std::string::npos
-                ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
-                : sched_config.find("gto") != std::string::npos
-                      ? CONCRETE_SCHEDULER_GTO
-                      : sched_config.find("rrr") != std::string::npos
-                            ? CONCRETE_SCHEDULER_RRR
-                      : sched_config.find("old") != std::string::npos
-                            ? CONCRETE_SCHEDULER_OLDEST_FIRST
-                            : sched_config.find("warp_limiting") !=
-                                      std::string::npos
-                                  ? CONCRETE_SCHEDULER_WARP_LIMITING
-                                  : NUM_CONCRETE_SCHEDULERS;
+          :sched_config.find("laws") != std::string::npos
+            ? CONCRETE_SCHEDULER_LAWS
+            : sched_config.find("two_level_active") != std::string::npos
+                  ? CONCRETE_SCHEDULER_TWO_LEVEL_ACTIVE
+                  : sched_config.find("gto") != std::string::npos
+                        ? CONCRETE_SCHEDULER_GTO
+                        : sched_config.find("rrr") != std::string::npos
+                              ? CONCRETE_SCHEDULER_RRR
+                        : sched_config.find("old") != std::string::npos
+                              ? CONCRETE_SCHEDULER_OLDEST_FIRST
+                              : sched_config.find("warp_limiting") !=
+                                        std::string::npos
+                                    ? CONCRETE_SCHEDULER_WARP_LIMITING
+                                    : NUM_CONCRETE_SCHEDULERS;
   assert(scheduler != NUM_CONCRETE_SCHEDULERS);
 
   for (unsigned i = 0; i < m_config->gpgpu_num_sched_per_core; i++) {
@@ -1181,12 +1183,74 @@ void scheduler_unit::order_by_priority(
   result_list.clear();
   typename std::vector<T> temp = input_list;
 
-  for (auto i : this->m_shader->l1d_access_bit_map) {
-    std::cout << i;
-  }
-  std::cout << "end" << std::endl;
   // TODO: add ORDERING_CACHE_AWARE_THEN_GREEDY_THEN_PRIORITY_FUNC to if-else
-  if (ORDERING_GREEDY_THEN_PRIORITY_FUNC == ordering) {
+  if (ORDERING_CACHE_AWARE_THEN_GREEDY_THEN_PRIORITY_FUNC == ordering) {
+    // type T = shd_warp_t
+    //////////////////
+    // std::cout << "GET IN TO LAWS SCHEDULER" << std::endl;
+    // if (this->m_shader->l1d_access_bit_map.size() > 0) {
+    //   std::cout << "shape " << this->m_shader->l1d_access_bit_map.size() << " ";
+    //   for (auto i : this->m_shader->l1d_access_bit_map) {
+    //     std::cout << i << " ";
+    //   }
+    //   std::cout << "end" << std::endl;
+    // }
+
+    std::vector<T> laws_values;
+    for (auto &warp : input_list) {
+      if (warp->ibuffer_next_valid()) {
+        const warp_inst_t * inst = warp->ibuffer_next_inst();
+        if (inst->op == LOAD_OP) { // Condition 1
+          // for (auto it=inst->m_accessq.begin(); it != inst->m_accessq.end(); ++it) {
+          //    if (std::find(this->m_shader->l1d_access_bit_map.begin(), this->m_shader->l1d_access_bit_map.end(), it->get_addr()) != this->m_shader->l1d_access_bit_map.end()) {
+          //       //! Condition 2
+          //       std::cout << "we find " << it->get_addr() << std::endl;
+          //       // result_list.push_back(warp);
+          //       laws_values.push_back(warp);
+          //       break;
+          //    }
+          // }
+          for (unsigned int i=0; i < MAX_WARP_SIZE ; i++) {
+            // std::cout << inst->get_addr(i) << std::endl;
+            auto addr = inst->get_addr(i); //FIXME: get addr is not getting the load addr
+            if (std::find(this->m_shader->l1d_access_bit_map.begin(), this->m_shader->l1d_access_bit_map.end(), addr) != this->m_shader->l1d_access_bit_map.end()) {
+              //! Condition 2
+              // std::cout << "we find " << addr << std::endl;
+              result_list.push_back(warp);
+              laws_values.push_back(warp);
+              break;
+            }
+          }
+        }
+      }
+    }
+    // std::cout << "here" << std::endl;
+    // for (auto &i : laws_values) {
+    //   std::cout << i->get_warp_id() << " ";
+    // }
+    // std::cout << "end here" << std::endl;
+
+    T greedy_value = *last_issued_from_input;
+    if ( std::find(laws_values.begin(), laws_values.end(), greedy_value) == laws_values.end() ) {
+      result_list.push_back(greedy_value);
+    }
+
+    std::sort(temp.begin(), temp.end(), priority_func);
+    typename std::vector<T>::iterator iter = temp.begin();
+    for (unsigned count = 0; count < num_warps_to_add; ++count, ++iter) {
+      if (*iter != greedy_value) {
+        if ( std::find(laws_values.begin(), laws_values.end(), *iter) == laws_values.end() ) {
+          result_list.push_back(*iter);
+        }
+      }
+    }
+
+    // std::cout << "there" << std::endl;
+    // for (auto &i : result_list) {
+    //   std::cout << i->get_warp_id() << " ";
+    // }
+    // std::cout << "end there" << std::endl;
+  } else if (ORDERING_GREEDY_THEN_PRIORITY_FUNC == ordering) {
     T greedy_value = *last_issued_from_input;
     result_list.push_back(greedy_value);
 

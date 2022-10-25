@@ -281,6 +281,10 @@ void warp_inst_t::broadcast_barrier_reduction(
   }
 }
 
+bool warp_inst_t::get_m_mem_access_created() const {
+  return this->m_mem_accesses_created;
+}
+
 void warp_inst_t::generate_mem_accesses() {
   if (empty() || op == MEMORY_BARRIER_OP || m_mem_accesses_created) return;
   if (!((op == LOAD_OP) || (op == TENSOR_CORE_LOAD_OP) || (op == STORE_OP) ||

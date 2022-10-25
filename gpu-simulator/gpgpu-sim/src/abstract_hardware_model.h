@@ -1156,6 +1156,7 @@ class warp_inst_t : public inst_t {
   void set_not_active(unsigned lane_id);
 
   // accessors
+  bool get_m_mem_access_created() const;
   virtual void print_insn(FILE *fp) const {
     fprintf(fp, " [inst @ pc=0x%04x] ", pc);
     for (int i = (int)m_config->warp_size - 1; i >= 0; i--)
