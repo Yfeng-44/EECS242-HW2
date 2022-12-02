@@ -1081,6 +1081,8 @@ class warp_inst_t : public inst_t {
   void issue(const active_mask_t &mask, unsigned warp_id,
              unsigned long long cycle, int dynamic_warp_id, int sch_id);
 
+  bool contains_accessq(std::deque<new_addr_type> info) const;
+
   const active_mask_t &get_active_mask() const { return m_warp_active_mask; }
   void completed(unsigned long long cycle)
       const;  // stat collection: called when the instruction is completed

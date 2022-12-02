@@ -1185,41 +1185,16 @@ void scheduler_unit::order_by_priority(
 
   // TODO: add ORDERING_CACHE_AWARE_THEN_GREEDY_THEN_PRIORITY_FUNC to if-else
   if (ORDERING_CACHE_AWARE_THEN_GREEDY_THEN_PRIORITY_FUNC == ordering) {
-    // type T = shd_warp_t
-    //////////////////
-    // std::cout << "GET IN TO LAWS SCHEDULER" << std::endl;
-    // if (this->m_shader->l1d_access_bit_map.size() > 0) {
-    //   std::cout << "shape " << this->m_shader->l1d_access_bit_map.size() << " ";
-    //   for (auto i : this->m_shader->l1d_access_bit_map) {
-    //     std::cout << i << " ";
-    //   }
-    //   std::cout << "end" << std::endl;
-    // }
 
     std::vector<T> laws_values;
     for (auto &warp : input_list) {
       if (warp->ibuffer_next_valid()) {
         const warp_inst_t * inst = warp->ibuffer_next_inst();
-        if (inst->op == LOAD_OP) { // Condition 1
-          // for (auto it=inst->m_accessq.begin(); it != inst->m_accessq.end(); ++it) {
-          //    if (std::find(this->m_shader->l1d_access_bit_map.begin(), this->m_shader->l1d_access_bit_map.end(), it->get_addr()) != this->m_shader->l1d_access_bit_map.end()) {
-          //       //! Condition 2
-          //       std::cout << "we find " << it->get_addr() << std::endl;
-          //       // result_list.push_back(warp);
-          //       laws_values.push_back(warp);
-          //       break;
-          //    }
-          // }
-          for (unsigned int i=0; i < MAX_WARP_SIZE ; i++) {
-            // std::cout << inst->get_addr(i) << std::endl;
-            auto addr = inst->get_addr(i); //FIXME: get addr is not getting the load addr
-            if (std::find(this->m_shader->l1d_access_bit_map.begin(), this->m_shader->l1d_access_bit_map.end(), addr) != this->m_shader->l1d_access_bit_map.end()) {
-              //! Condition 2
-              // std::cout << "we find " << addr << std::endl;
-              result_list.push_back(warp);
-              laws_values.push_back(warp);
-              break;
-            }
+        if (inst->is_load()) { // Condition 1
+          if (inst->contains_accessq(this->m_shader->l1d_access_bit_map)) { //! Condition 2
+            std::cout << "we find " << std::endl;
+            result_list.push_back(warp);
+            laws_values.push_back(warp);
           }
         }
       }
