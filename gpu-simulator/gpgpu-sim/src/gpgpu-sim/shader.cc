@@ -2074,12 +2074,15 @@ void ldst_unit::L1_latency_queue_cycle() {
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
-      if (this->m_core->l1d_access_bit_map.size() < this->m_core->N_blk)  {
-        // this->m_core->N_blk += 1;
-        this->m_core->l1d_access_bit_map.push_back(mf_next->get_addr());
-      } else { // l1d_access_bit_map.size() >= N_blk
-        this->m_core->l1d_access_bit_map.pop_front();
-        this->m_core->l1d_access_bit_map.push_back(mf_next->get_addr());
+
+      if (std::find(this->m_core->l1d_access_bit_map.begin(), this->m_core->l1d_access_bit_map.end(), mf_next->get_addr()) == this->m_core->l1d_access_bit_map.end()) {
+        if (this->m_core->l1d_access_bit_map.size() < this->m_core->N_blk)  {
+          // this->m_core->N_blk += 1;
+          this->m_core->l1d_access_bit_map.push_back(mf_next->get_addr());
+        } else { // l1d_access_bit_map.size() >= N_blk
+          this->m_core->l1d_access_bit_map.pop_front();
+          this->m_core->l1d_access_bit_map.push_back(mf_next->get_addr());
+        }
       }
 
       bool write_sent = was_write_sent(events);

@@ -273,25 +273,29 @@ void warp_inst_t::do_atomic(const active_mask_t &access_mask, bool forceDo) {
 
 bool warp_inst_t::contains_accessq(std::deque<new_addr_type> info) const {
 
-    auto cache_block_size = m_config->gpgpu_cache_constl1_linesize;
-    mem_access_byte_mask_t byte_mask;
-    std::map<new_addr_type, active_mask_t>
-        accesses;  // block address -> set of thread offsets in warp
-    std::map<new_addr_type, active_mask_t>::iterator a;
+    // auto cache_block_size = m_config->gpgpu_cache_constl1_linesize;
+    // mem_access_byte_mask_t byte_mask;
+    // std::map<new_addr_type, active_mask_t>
+    //     accesses;  // block address -> set of thread offsets in warp
+    // std::map<new_addr_type, active_mask_t>::iterator a;
     for (unsigned thread = 0; thread < m_config->warp_size; thread++) {
-      if (!active(thread)) continue;
-      new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[0];
-      new_addr_type block_address =
-          line_size_based_tag_func(addr, cache_block_size);
-      accesses[block_address].set(thread);
-      unsigned idx = addr - block_address;
-      for (unsigned i = 0; i < data_size; i++) byte_mask.set(idx + i);
+      // if (!active(thread)) continue;
+      for (int i = 0 ; i < 8;i ++) {
+        new_addr_type addr = m_per_scalar_thread[thread].memreqaddr[i];
+        auto itr = std::find(info.begin(), info.end(), addr);
+        if (itr != info.end()) return true;
+      }
+      // new_addr_type block_address =
+      //     line_size_based_tag_func(addr, cache_block_size);
+      // accesses[block_address].set(thread);
+      // unsigned idx = addr - block_address;
+      // for (unsigned i = 0; i < data_size; i++) byte_mask.set(idx + i);
     }
-    for (a = accesses.begin(); a != accesses.end(); ++a) {
-      auto addr = a->first;
-      auto itr = std::find(info.begin(), info.end(), addr);
-      if (itr != info.end()) return true;
-    }
+    // for (a = accesses.begin(); a != accesses.end(); ++a) {
+    //   auto addr = a->first;
+    //   auto itr = std::find(info.begin(), info.end(), addr);
+    //   if (itr != info.end()) return true;
+    // }
       // m_accessq.push_back(mem_access_t(
       //     access_type, a->first, cache_block_size, is_write, a->second,
       //     byte_mask, mem_access_sector_mask_t(), m_config->gpgpu_ctx));

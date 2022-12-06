@@ -2542,6 +2542,8 @@ class shader_core_ctx : public core_t {
   std::deque<new_addr_type> l1d_access_bit_map;
   u_int32_t N_blk = 0;
 
+  std::unordered_map<new_addr_type, uint16_t> access_counter;
+
  private:
   unsigned int m_occupied_n_threads;
   unsigned int m_occupied_shmem;
